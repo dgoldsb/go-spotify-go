@@ -8,6 +8,20 @@ from model import Track
 LOG = logging.getLogger(__name__)
 
 
+class WeightCalculator:
+    """
+    Base class for a weight calculator, creating a class instance allows for the
+    keeping of state, using previous weight calculations to adjust future weights.
+    """
+    def calculate(self, tracks: typing.Set[Track]):
+        raise NotImplementedError
+
+
+class PopularWeight(WeightCalculator):
+    def calculate(self, tracks: typing.Set[Track]):
+        return [track.popularity for track in tracks]
+
+
 class ArtistChainFactory:
     """
     For fun, this will be an iterable.
@@ -16,6 +30,7 @@ class ArtistChainFactory:
         self,
         client: SpotifyClient,
         seed_track: Track,
+        weight_calculator: WeightCalculator,
         unique_artists=True,
         unique_tracks=True,
     ):
@@ -25,6 +40,7 @@ class ArtistChainFactory:
         self._tracks = {seed_track}
         self._unique_artists = unique_artists
         self._unique_tracks = unique_tracks
+        self._weight_calculator = weight_calculator
 
     def __iter__(self):
         return self
@@ -67,15 +83,15 @@ class ArtistChainFactory:
 
                 target_tracks.add(track)
 
-        chosen_track = _select_track(target_tracks)
+        chosen_track = _select_track(target_tracks, self._weight_calculator)
         LOG.info("Chose track %s", str(chosen_track))
 
         return self._client.enrich_track(chosen_track)
 
 
-def _select_track(tracks: typing.Set[Track]):
+def _select_track(tracks: typing.Set[Track], weight_calculator: WeightCalculator):
     """Selects a track randomly, using the track popularity as a weight."""
-    weights = [track.popularity for track in tracks]
+    weights = weight_calculator.calculate(tracks)
     choices = random.choices(list(tracks), weights, k=1)
 
     return choices[0]
