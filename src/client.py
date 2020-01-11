@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Generator
 
 import spotipy
@@ -11,6 +12,7 @@ class SpotifyClient:
         client_credentials_manager = SpotifyClientCredentials()
         self._spotipy = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 
+    @lru_cache(1000)
     def get_artist(self, artist_id: str) -> Artist:
         r = self._spotipy.artist(artist_id)
 
@@ -32,12 +34,16 @@ class SpotifyClient:
         for track_obj in r["tracks"]:
             yield self.get_track(track_obj["id"])
 
+    @lru_cache(1000)
     def get_track(self, track_id: str) -> Track:
         r = self._spotipy.track(track_id)
-        artist = self.get_artist(r["artists"][0]["id"])
+
+        artists = []
+        for artist_obj in r["artists"]:
+            artists.append(self.get_artist(artist_obj["id"]))
 
         return Track(
-            artist=artist,
+            artists=artists,
             duration=r["duration_ms"],
             explicit=r["explicit"],
             identifier=r["id"],

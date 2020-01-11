@@ -19,7 +19,7 @@ class ArtistChainFactory:
         unique_artists=True,
         unique_tracks=True,
     ):
-        self._artists = {seed_track.artist}
+        self._artists = set(seed_track.artists)
         self._client = client
         self._next_track = seed_track
         self._tracks = {seed_track}
@@ -33,7 +33,7 @@ class ArtistChainFactory:
         track = self._next_track
         self._next_track = self._get_next_track()
 
-        self._artists.add(self._next_track.artist)
+        self._artists = self._artists.union(set(self._next_track.artists))
         self._tracks.add(self._next_track)
 
         return track
@@ -44,10 +44,11 @@ class ArtistChainFactory:
 
     def _get_next_track(self):
         # TODO: Split up.
-        related_artists = self._client.get_related_artists(self._next_track.artist.identifier)
+        # TODO: Not all related artists.
+        related_artists = self._client.get_related_artists(self._next_track.artists[0].identifier)
         target_tracks = set()
         for related_artist in related_artists:
-            LOG.debug("Fetching tracks for %s", str(related_artist))
+            LOG.info("Fetching tracks for %s", str(related_artist))
 
             # Skip this artist if it already has track(s) in the playlist, and the
             # user requested unique artists.
@@ -64,6 +65,8 @@ class ArtistChainFactory:
 
                 target_tracks.add(track)
 
+            break # TODO
+
         chosen_track = _select_track(target_tracks)
         LOG.info("Chose track %s", str(chosen_track))
 
@@ -73,6 +76,6 @@ class ArtistChainFactory:
 def _select_track(tracks: typing.Set[Track]):
     """Selects a track randomly, using the track popularity as a weight."""
     weights = [track.popularity for track in tracks]
-    choices = random.choices(tracks, weights, k=1)
+    choices = random.choices(list(tracks), weights, k=1)
 
     return choices[0]

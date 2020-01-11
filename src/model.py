@@ -15,7 +15,7 @@ class Artist:
         return hash(self.identifier)
 
     def __repr__(self):
-        return f"<Artist instance at {id(self)}, {self.name}>"
+        return f"<Artist instance at {id(self)}, {self.name} ({self.identifier})>"
 
     def __str__(self):
         return repr(self)
@@ -24,7 +24,7 @@ class Artist:
 @dataclass
 class Track:
     # For the purpose of this project, consider the first artist in the list,
-    artist: Artist
+    artists: typing.List[Artist]
     duration: int
     explicit: bool
     identifier: str
@@ -38,7 +38,7 @@ class Track:
         return hash(self.identifier)
 
     def __repr__(self):
-        return f"<Track instance at {id(self)}, {self.name} by {self.artist}>"
+        return f"<Track instance at {id(self)}, {self.name} ({self.identifier})>"
 
     def __str__(self):
         return repr(self)
@@ -51,7 +51,7 @@ class Playlist(list):
         super().__setitem__(key, value)
 
     def __repr__(self):
-        return f"<Playlist instance at {id(self)}, {self.duration} ms, {self.artists} artists, {self.tracks} tracks>"
+        return f"<Playlist instance at {id(self)}, {self.duration} ms, {len(self.artists)} artists, {len(self.tracks)} tracks>"
 
     def __str__(self):
         return repr(self)
@@ -65,7 +65,7 @@ class Playlist(list):
     def artists(self) -> typing.Set[Artist]:
         artists = set()
         for track in self:
-            artists += set(track.artists)
+            artists = artists.union(set(track.artists))
 
         return artists
 

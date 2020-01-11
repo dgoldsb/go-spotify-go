@@ -9,7 +9,7 @@ LOG = logging.getLogger(__name__)
 
 
 def main():
-    size = 10
+    size = 3
     track = "7Jh1bpe76CNTCgdgAdBw4Z"
 
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)

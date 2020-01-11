@@ -10,5 +10,5 @@ The result is a playlist that will take you gradually from artist to artist with
 - Use a similarity metric (song metadata) instead of only weighing using popularity
 - Select from the pool of artist x songs, not artist then song
 - Write my own client, that returns dataclasses?
-- Add a "direction", e.g. higher BPM
+- Add a "direction", e.g. higher BPM, most dis-similar yet still related artist
 - Filter on correct market availability
