@@ -104,9 +104,9 @@ class ArtistChainFactory:
 
 
 def _select_track(tracks: typing.Set[Track], weight_calculator: WeightCalculator):
-    """Selects a track randomly, using the track popularity as a weight."""
+    """Selects a track randomly, using weight calculator to calculate each weight."""
     weights = weight_calculator.calculate(tracks)
-    choices = random.choices(list(tracks), weights, k=1)
-    LOG.info("Chose track %s", str(choices[0]))
+    choice = random.choices(list(tracks), weights, k=1)[0]  # avoid importing numpy
+    LOG.info("Chose track %s", str(choice))
 
-    return choices[0]
+    return choice
