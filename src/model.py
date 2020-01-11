@@ -1,5 +1,5 @@
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -23,13 +23,25 @@ class Artist:
 
 @dataclass
 class Track:
-    # For the purpose of this project, consider the first artist in the list,
-    artists: typing.List[Artist]
     duration: int
     explicit: bool
     identifier: str
     name: str
     popularity: int
+
+    artists: typing.List[Artist] = field(default_factory=lambda: list())
+    key: int = None
+    mode: int = None
+    time_signature: int = None
+    acousticness: float = None
+    danceability: float = None
+    energy: float = None
+    instrumentalness: float = None
+    liveness: float = None
+    loudness: float = None
+    speechiness: float = None
+    valence: float = None
+    tempo: float = None
 
     def __eq__(self, other):
         return self.identifier == other.identifier

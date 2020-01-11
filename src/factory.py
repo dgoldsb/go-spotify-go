@@ -45,6 +45,8 @@ class ArtistChainFactory:
     def _get_next_track(self):
         # TODO: Split up.
         # TODO: Not all related artists.
+        # TODO: Two-step process: pick a song per artist, then fetch information for
+        #  those.
         related_artists = self._client.get_related_artists(self._next_track.artists[0].identifier)
         target_tracks = set()
         for related_artist in related_artists:
@@ -65,12 +67,10 @@ class ArtistChainFactory:
 
                 target_tracks.add(track)
 
-            break # TODO
-
         chosen_track = _select_track(target_tracks)
         LOG.info("Chose track %s", str(chosen_track))
 
-        return chosen_track
+        return self._client.enrich_track(chosen_track)
 
 
 def _select_track(tracks: typing.Set[Track]):
