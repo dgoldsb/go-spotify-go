@@ -3,7 +3,7 @@ import typing
 import logging
 
 from client import SpotifyClient
-from model import Track
+from model import Artist, Track
 
 LOG = logging.getLogger(__name__)
 
@@ -26,6 +26,8 @@ class ArtistChainFactory:
     """
     For fun, this will be an iterable.
     """
+    MAX_ARTISTS = 5
+
     def __init__(
         self,
         client: SpotifyClient,
@@ -47,8 +49,11 @@ class ArtistChainFactory:
 
     def __next__(self):
         track = self._next_track
+
+        # Calculate which track to return next based on the track that is returned now.
         self._next_track = self._get_next_track()
 
+        # Add the new track to the set of visited tracks and artists.
         self._artists = self._artists.union(set(self._next_track.artists))
         self._tracks.add(self._next_track)
 
@@ -58,40 +63,50 @@ class ArtistChainFactory:
         self._artists = set()
         self._tracks = set()
 
-    def _get_next_track(self):
-        # TODO: Split up.
-        # TODO: Not all related artists.
-        # TODO: Two-step process: pick a song per artist, then fetch information for
-        #  those.
-        related_artists = self._client.get_related_artists(self._next_track.artists[0].identifier)
-        target_tracks = set()
-        for related_artist in related_artists:
-            LOG.info("Fetching tracks for %s", str(related_artist))
+    def _get_candidate_track(self, artist: Artist):
+        candidate_tracks = []
+        for track in self._client.get_top_tracks(artist.identifier):
+            LOG.debug("Fetched track %s", str(track))
 
+            # Skip this track if it is already in the playlist, and the user
+            # requested unique tracks.
+            if self._unique_tracks and track in self._tracks:
+                continue
+
+            candidate_tracks.append(track)
+
+        choice = self._client.enrich_track(random.choice(candidate_tracks))
+        LOG.info("Selected track %s for artist %s", str(choice), str(artist))
+        return choice
+
+    def _get_next_track(self):
+        return _select_track(
+            set(self._get_related_tracks(self._next_track.artists[0])),
+            self._weight_calculator,
+        )
+
+    def _get_related_tracks(self, artist: Artist):
+        yield_count = 0
+        for related_artist in self._client.get_related_artists(artist.identifier):
             # Skip this artist if it already has track(s) in the playlist, and the
             # user requested unique artists.
             if self._unique_artists and related_artist in self._artists:
                 continue
 
-            for track in self._client.get_top_tracks(related_artist.identifier):
-                LOG.debug("Fetched track %s with popularity %s", str(track), track.popularity)
+            yield self._get_candidate_track(related_artist)
 
-                # Skip this track if it is already in the playlist, and the user
-                # requested unique tracks.
-                if self._unique_tracks and track in self._tracks:
-                    continue
-
-                target_tracks.add(track)
-
-        chosen_track = _select_track(target_tracks, self._weight_calculator)
-        LOG.info("Chose track %s", str(chosen_track))
-
-        return self._client.enrich_track(chosen_track)
+            yield_count += 1
+            if yield_count == self.MAX_ARTISTS:
+                LOG.info(
+                    "Reached artist cap of %d, skipping the rest", self.MAX_ARTISTS
+                )
+                break
 
 
 def _select_track(tracks: typing.Set[Track], weight_calculator: WeightCalculator):
     """Selects a track randomly, using the track popularity as a weight."""
     weights = weight_calculator.calculate(tracks)
     choices = random.choices(list(tracks), weights, k=1)
+    LOG.info("Chose track %s", str(choices[0]))
 
     return choices[0]
