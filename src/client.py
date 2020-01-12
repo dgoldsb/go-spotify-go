@@ -3,14 +3,18 @@ from typing import Generator
 
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
+from spotipy.util import prompt_for_user_token
 
 from model import Artist, Playlist, Track
 
 
 class SpotifyClient:
-    def __init__(self):
-        client_credentials_manager = SpotifyClientCredentials()
-        self._spotipy = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+    def __init__(self, user_id):
+        self._spotipy = spotipy.Spotify(
+            auth=prompt_for_user_token(user_id, scope="playlist-modify-public"),
+            client_credentials_manager=SpotifyClientCredentials(),
+        )
+        self._user_id = user_id
 
     @lru_cache(1000)
     def enrich_track(self, track: Track) -> Track:
@@ -48,6 +52,52 @@ class SpotifyClient:
             identifier=r["id"],
             popularity=r["popularity"]
         )
+
+    def get_playlist_tracks(
+            self, playlist: Playlist, enriched=False
+    ) -> Generator[Track, None, None]:
+        continue_ = True
+        current_offset = 0
+        while continue_:
+            r = self._spotipy.user_playlist_tracks(
+                user=self._user_id,
+                playlist_id=playlist.identifier,
+                offset=current_offset
+            )
+
+            for item in r["items"]:
+                track = Track(
+                    duration=item["track"]["duration_ms"],
+                    explicit=item["track"]["explicit"],
+                    identifier=item["track"]["id"],
+                    name=item["track"]["name"],
+                    popularity=item["track"]["popularity"],
+                )
+
+                if enriched:
+                    track = self.enrich_track(track)
+
+                yield track
+
+            continue_ = (r["offset"] + r["limit"]) < r["total"]
+            current_offset = r["offset"]
+
+    def get_playlists(self, include_tracks=False) -> Generator[Playlist, None, None]:
+        continue_ = True
+        current_offset = 0
+        while continue_:
+            r = self._spotipy.user_playlists(self._user_id, offset=current_offset)
+
+            for item in r["items"]:
+                playlist = Playlist(item["name"], item["id"])
+
+                if include_tracks:
+                    playlist.extend(self.get_playlist_tracks(playlist))
+
+                yield playlist
+
+            continue_ = (r["offset"] + r["limit"]) < r["total"]
+            current_offset = r["offset"]
 
     def get_related_artists(self, artist_id: str) -> Generator[Artist, None, None]:
         r = self._spotipy.artist_related_artists(artist_id)
@@ -89,4 +139,21 @@ class SpotifyClient:
         ))
 
     def store_playlist(self, playlist: Playlist):
-        raise NotImplementedError
+        if not playlist.identifier:
+            r = self._spotipy.user_playlist_create(self._user_id, playlist.name)
+            playlist.identifier = r["id"]
+
+        self.wipe_playlist(playlist)  # TODO: Add some kind of protection.
+
+        tracks = [track.identifier for track in playlist]
+        self._spotipy.user_playlist_add_tracks(
+            self._user_id, playlist.identifier, tracks
+        )
+
+    def wipe_playlist(self, playlist: Playlist):
+        tracks = [track.identifier for track in self.get_playlist_tracks(playlist)]
+        self._spotipy.user_playlist_remove_all_occurrences_of_tracks(
+            self._user_id,
+            playlist.identifier,
+            tracks
+        )

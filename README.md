@@ -8,9 +8,7 @@ This tool can be consider a semi-random walker that is drawn to more popular art
 
 ## TO DO
 
-- Making a PIP-installable command line tool would be neat
-- Use a similarity metric (song metadata) instead of only weighing using popularity
-- Select from the pool of artist x songs, not artist then song
-- Write my own client, that returns dataclasses?
+- Use a similarity metric (song metadata) instead of only weighing using popularity, now the jumps can still be pretty radical
 - Add a "direction", e.g. higher BPM, most dis-similar yet still related artist
+- Making a PIP-installable command line tool would be neat
 - Filter on correct market availability

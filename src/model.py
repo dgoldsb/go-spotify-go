@@ -57,6 +57,12 @@ class Track:
 
 
 class Playlist(list):
+    def __init__(self, name, identifier=None):
+        self.identifier = identifier
+        self.name = name
+
+        super().__init__()
+
     def __setitem__(self, key, value):
         if not isinstance(value, Track):
             raise TypeError("You can only store Track instances in a Playlist")

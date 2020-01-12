@@ -1,6 +1,7 @@
 import random
 import typing
 import logging
+from operator import attrgetter
 
 from client import SpotifyClient
 from model import Artist, Track
@@ -26,7 +27,7 @@ class ArtistChainFactory:
     """
     For fun, this will be an iterable.
     """
-    MAX_ARTISTS = 5
+    MAX_ARTISTS = 10
 
     def __init__(
         self,
@@ -75,6 +76,9 @@ class ArtistChainFactory:
 
             candidate_tracks.append(track)
 
+        if not candidate_tracks:
+            raise RuntimeError("No songs to select from.")
+
         choice = self._client.enrich_track(random.choice(candidate_tracks))
         LOG.info("Selected track %s for artist %s", str(choice), str(artist))
         return choice
@@ -87,13 +91,23 @@ class ArtistChainFactory:
 
     def _get_related_tracks(self, artist: Artist):
         yield_count = 0
-        for related_artist in self._client.get_related_artists(artist.identifier):
+
+        # Sort related artists by descending popularity, as we might not be able to
+        # loop over all artists.
+        related_artists = self._client.get_related_artists(artist.identifier)
+        related_artists = sorted(related_artists, key=attrgetter("popularity"))[::-1]
+
+        # Iterate over the artists, and add a song to the pool of potential songs.
+        for related_artist in related_artists:
             # Skip this artist if it already has track(s) in the playlist, and the
             # user requested unique artists.
             if self._unique_artists and related_artist in self._artists:
                 continue
 
-            yield self._get_candidate_track(related_artist)
+            try:
+                yield self._get_candidate_track(related_artist)
+            except RuntimeError:
+                pass
 
             yield_count += 1
             if yield_count == self.MAX_ARTISTS:

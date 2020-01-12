@@ -1,3 +1,4 @@
+import argparse
 import logging
 import sys
 
@@ -9,22 +10,35 @@ LOG = logging.getLogger(__name__)
 
 
 def main():
-    size = 3
-    track = "7Jh1bpe76CNTCgdgAdBw4Z"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--size", type=int, help="Size of the generated playlist")
+    parser.add_argument("--name", type=str, help="Name of the generated playlist")
+    parser.add_argument("--user", type=str, help="User for whom to create the playlist")
+    parser.add_argument("--seed", type=str, help="ID of the seed track")
+    args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
-    client = SpotifyClient()
+    client = SpotifyClient(args.user)
+    seed_track = client.get_track(args.seed)
+    factory = ArtistChainFactory(
+        client, seed_track, PopularWeight(), unique_artists=False
+    )
 
-    seed_track = client.get_track(track)
+    # If a playlist of this name exists, use it, otherwise create one.
+    for playlist_ in client.get_playlists():
+        if playlist_.name == args.name:
+            playlist = playlist_
+            break
+    else:
+        playlist = Playlist(name=args.name)
 
-    factory = ArtistChainFactory(client, seed_track, PopularWeight())
-
-    playlist = Playlist()
-    for _, track in zip(range(size), factory):
+    for _, track in zip(range(args.size), factory):
         playlist.append(track)
 
-    print(playlist)
+    LOG.info("Finished generating playlist %s", str(playlist))
+
+    client.store_playlist(playlist)
 
 
 if __name__ == "__main__":
