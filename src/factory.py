@@ -9,18 +9,28 @@ from model import Artist, Track
 LOG = logging.getLogger(__name__)
 
 
+# Add debug messages that show features, such as popularity, in weight calculator
+
 class WeightCalculator:
     """
     Base class for a weight calculator, creating a class instance allows for the
     keeping of state, using previous weight calculations to adjust future weights.
     """
-    def calculate(self, tracks: typing.Set[Track]):
+    def _calculate_one(self, track: Track, artist: Artist):
         raise NotImplementedError
+
+    def calculate(self, tracks: typing.List[Track], artists: typing.List[Artist]):
+        for track, artist in zip(tracks, artists):
+            weight = self._calculate_one(track, artist)
+            LOG.info("Weight determined to be %s", weight)
+            yield weight
 
 
 class PopularWeight(WeightCalculator):
-    def calculate(self, tracks: typing.Set[Track]):
-        return [track.popularity for track in tracks]
+    def _calculate_one(self, track: Track, artist: Artist):
+        LOG.info("Artist %s has popularity %s", artist.name, artist.popularity)
+        LOG.info("Track %s has popularity %s", track.name, track.popularity)
+        return track.popularity * artist.popularity
 
 
 class ArtistChainFactory:
@@ -84,8 +94,10 @@ class ArtistChainFactory:
         return choice
 
     def _get_next_track(self):
+        tracks_artists = list(self._get_related_tracks(self._next_track.artists[0]))
         return _select_track(
-            set(self._get_related_tracks(self._next_track.artists[0])),
+            [t for t, a in tracks_artists],
+            [a for t, a in tracks_artists],
             self._weight_calculator,
         )
 
@@ -96,6 +108,7 @@ class ArtistChainFactory:
         # loop over all artists.
         related_artists = self._client.get_related_artists(artist.identifier)
         related_artists = sorted(related_artists, key=attrgetter("popularity"))[::-1]
+        LOG.info("Artist popularities are %s", str([a.popularity for a in related_artists]))
 
         # Iterate over the artists, and add a song to the pool of potential songs.
         for related_artist in related_artists:
@@ -105,7 +118,7 @@ class ArtistChainFactory:
                 continue
 
             try:
-                yield self._get_candidate_track(related_artist)
+                yield self._get_candidate_track(related_artist), related_artist
             except RuntimeError:
                 pass
 
@@ -117,10 +130,14 @@ class ArtistChainFactory:
                 break
 
 
-def _select_track(tracks: typing.Set[Track], weight_calculator: WeightCalculator):
+def _select_track(
+        tracks: typing.List[Track],
+        artists: typing.List[Artist],
+        weight_calculator: WeightCalculator,
+):
     """Selects a track randomly, using weight calculator to calculate each weight."""
-    weights = weight_calculator.calculate(tracks)
-    choice = random.choices(list(tracks), weights, k=1)[0]  # avoid importing numpy
+    weights = list(weight_calculator.calculate(tracks, artists))
+    choice = random.choices(tracks, weights, k=1)[0]  # avoid importing numpy
     LOG.info("Chose track %s", str(choice))
 
     return choice
