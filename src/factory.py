@@ -9,8 +9,6 @@ from model import Artist, Track
 LOG = logging.getLogger(__name__)
 
 
-# Add debug messages that show features, such as popularity, in weight calculator
-
 class WeightCalculator:
     """
     Base class for a weight calculator, creating a class instance allows for the
@@ -131,9 +129,9 @@ class ArtistChainFactory:
 
 
 def _select_track(
-        tracks: typing.List[Track],
-        artists: typing.List[Artist],
-        weight_calculator: WeightCalculator,
+    tracks: typing.List[Track],
+    artists: typing.List[Artist],
+    weight_calculator: WeightCalculator,
 ):
     """Selects a track randomly, using weight calculator to calculate each weight."""
     weights = list(weight_calculator.calculate(tracks, artists))
