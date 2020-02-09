@@ -59,8 +59,7 @@ class SpotifyClient:
         continue_ = True
         current_offset = 0
         while continue_:
-            r = self._spotipy.user_playlist_tracks(
-                user=self._user_id,
+            r = self._spotipy.playlist_tracks(
                 playlist_id=playlist.identifier,
                 offset=current_offset
             )
@@ -97,7 +96,7 @@ class SpotifyClient:
                 yield playlist
 
             continue_ = (r["offset"] + r["limit"]) < r["total"]
-            current_offset = r["offset"]
+            current_offset = r["offset"] + 1
 
     def get_related_artists(self, artist_id: str) -> Generator[Artist, None, None]:
         r = self._spotipy.artist_related_artists(artist_id)
