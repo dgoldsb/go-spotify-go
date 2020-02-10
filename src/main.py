@@ -3,7 +3,7 @@ import logging
 import sys
 
 from client import SpotifyClient
-from factory import ArtistChainFactory, PopularWeight
+from factory import ArtistChainFactory, DriftingWeight
 from model import Playlist
 
 LOG = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def main():
     client = SpotifyClient(args.user)
     seed_track = client.get_track(args.seed)
     factory = ArtistChainFactory(
-        client, seed_track, PopularWeight(), unique_artists=False
+        client, seed_track, DriftingWeight(seed_track), unique_artists=False
     )
 
     # If a playlist of this name exists, use it, otherwise create one.

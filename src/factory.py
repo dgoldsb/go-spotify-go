@@ -4,7 +4,7 @@ import logging
 from operator import attrgetter
 
 from client import SpotifyClient
-from model import Artist, Track
+from model import Artist, Track, cartesian_distance
 
 LOG = logging.getLogger(__name__)
 
@@ -14,6 +14,11 @@ class WeightCalculator:
     Base class for a weight calculator, creating a class instance allows for the
     keeping of state, using previous weight calculations to adjust future weights.
     """
+
+    def __init__(self, seed_track):
+        self.last_track = None
+        self.seed_track = seed_track
+
     def _calculate_one(self, track: Track, artist: Artist):
         raise NotImplementedError
 
@@ -25,17 +30,78 @@ class WeightCalculator:
 
 
 class PopularWeight(WeightCalculator):
+    """
+    Give higher weights to tracks that are more popular, produced by more popular
+    artists.
+    """
+
     def _calculate_one(self, track: Track, artist: Artist):
         LOG.info("Artist %s has popularity %s", artist.name, artist.popularity)
         LOG.info("Track %s has popularity %s", track.name, track.popularity)
+
         return track.popularity * artist.popularity
+
+
+class SimilarWeight(WeightCalculator):
+    """
+    Give higher weights to tracks that are more popular, preferring songs similar to
+    the previous one.
+    """
+
+    def _calculate_one(self, track: Track, artist: Artist):
+        if not self.last_track:
+            similarity = 1
+        else:
+            similarity = cartesian_distance(track, self.last_track)
+
+        LOG.info("Artist %s has popularity %s", artist.name, artist.popularity)
+        LOG.info("Track %s has popularity %s", track.name, track.popularity)
+        LOG.info("Track %s has similarity %s", track.name, similarity)
+
+        return (track.popularity * artist.popularity) / (similarity ** 4)
+
+
+class DriftingWeight(WeightCalculator):
+    """
+    Give higher weights to tracks that are more popular, preferring tracks. similar to
+    the previous one and dissimilar from the seed track..
+    """
+
+    def _calculate_one(self, track: Track, artist: Artist):
+        if not self.last_track:
+            # If there is no last track we cannot compute a similarity.
+            previous_similarity = 1
+            # Without a ``previous_similarity`` the drift would be too strong.
+            seed_similarity = 1
+        else:
+            previous_similarity = cartesian_distance(track, self.last_track)
+            seed_similarity = cartesian_distance(track, self.seed_track)
+
+        LOG.info("Artist %s has popularity %s", artist.name, artist.popularity)
+        LOG.info("Track %s has popularity %s", track.name, track.popularity)
+        LOG.info(
+            "Track %s has similarity %s with the previous track",
+            track.name,
+            previous_similarity,
+        )
+        LOG.info(
+            "Track %s has similarity %s with the seed track",
+            track.name,
+            seed_similarity,
+        )
+
+        return (track.popularity * artist.popularity) * (
+            seed_similarity / previous_similarity
+        ) ** 2
 
 
 class ArtistChainFactory:
     """
     For fun, this will be an iterable.
     """
-    MAX_ARTISTS = 10
+
+    MAX_ARTISTS = 25
+    MAX_SONGS = 3
 
     def __init__(
         self,
@@ -72,7 +138,7 @@ class ArtistChainFactory:
         self._artists = set()
         self._tracks = set()
 
-    def _get_candidate_track(self, artist: Artist):
+    def _get_candidate_tracks(self, artist: Artist):
         candidate_tracks = []
         for track in self._client.get_top_tracks(artist.identifier):
             LOG.debug("Fetched track %s", str(track))
@@ -87,17 +153,24 @@ class ArtistChainFactory:
         if not candidate_tracks:
             raise RuntimeError("No songs to select from.")
 
-        choice = self._client.enrich_track(random.choice(candidate_tracks))
-        LOG.info("Selected track %s for artist %s", str(choice), str(artist))
-        return choice
+        random.shuffle(candidate_tracks)
+
+        choices = [
+            self._client.enrich_track(c) for c in candidate_tracks[: self.MAX_SONGS]
+        ]
+        LOG.info("Selected %s tracks for artist %s", len(choices), str(artist))
+        return choices
 
     def _get_next_track(self):
         tracks_artists = list(self._get_related_tracks(self._next_track.artists[0]))
-        return _select_track(
+        selected_track = _select_track(
             [t for t, a in tracks_artists],
             [a for t, a in tracks_artists],
             self._weight_calculator,
         )
+        self._weight_calculator.last_track = selected_track
+
+        return selected_track
 
     def _get_related_tracks(self, artist: Artist):
         yield_count = 0
@@ -106,7 +179,9 @@ class ArtistChainFactory:
         # loop over all artists.
         related_artists = self._client.get_related_artists(artist.identifier)
         related_artists = sorted(related_artists, key=attrgetter("popularity"))[::-1]
-        LOG.info("Artist popularities are %s", str([a.popularity for a in related_artists]))
+        LOG.info(
+            "Artist popularities are %s", str([a.popularity for a in related_artists])
+        )
 
         # Iterate over the artists, and add a song to the pool of potential songs.
         for related_artist in related_artists:
@@ -116,7 +191,8 @@ class ArtistChainFactory:
                 continue
 
             try:
-                yield self._get_candidate_track(related_artist), related_artist
+                for track in self._get_candidate_tracks(related_artist):
+                    yield track, related_artist
             except RuntimeError:
                 pass
 

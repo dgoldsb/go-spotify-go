@@ -55,6 +55,25 @@ class Track:
     def __str__(self):
         return repr(self)
 
+    @property
+    def vector(self):
+        vector = [
+            self.acousticness,
+            self.danceability,
+            self.energy,
+            self.instrumentalness,
+            self.liveness,
+            self.loudness,
+            self.speechiness,
+            self.valence,
+            self.tempo,
+        ]
+
+        if None in vector:
+            raise ValueError("Cannot construct vector, was this track enriched?")
+
+        return vector
+
 
 class Playlist(list):
     def __init__(self, name, identifier=None):
@@ -90,3 +109,15 @@ class Playlist(list):
     @property
     def tracks(self) -> typing.Set[Track]:
         return set(self)
+
+
+def cartesian_distance(a, b):
+    """
+    Calculate the distance between two object that implement a ``vector`` attribute.
+    """
+    total = 0
+
+    for a_, b_ in zip(a.vector, b.vector):
+        total += (a_ - b_) ** 2
+
+    return total ** 0.5

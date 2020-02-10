@@ -8,8 +8,7 @@ This tool can be considered as a semi-random walker that is drawn to more popula
 
 ## TO DO
 
-- Use a similarity metric (song metadata) instead of only weighing using popularity, now the jumps can still be pretty radical
-- Add a "direction", e.g. higher BPM, most dis-similar yet still related artist
-- Making a PIP-installable command line tool would be neat
+- Make the weight parameters easier to tweak (and tweak them)
 - Filter on correct market availability
+- Making a PIP-installable command line tool would be neat
 - Have a Dockerfile that makes sense, as currently user input is required, maybe run a small webserver that you provide your token and preferred settings to

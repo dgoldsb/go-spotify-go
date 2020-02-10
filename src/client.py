@@ -47,21 +47,16 @@ class SpotifyClient:
     def get_artist(self, artist_id: str) -> Artist:
         r = self._spotipy.artist(artist_id)
 
-        return Artist(
-            name=r["name"],
-            identifier=r["id"],
-            popularity=r["popularity"]
-        )
+        return Artist(name=r["name"], identifier=r["id"], popularity=r["popularity"])
 
     def get_playlist_tracks(
-            self, playlist: Playlist, enriched=False
+        self, playlist: Playlist, enriched=False
     ) -> Generator[Track, None, None]:
         continue_ = True
         current_offset = 0
         while continue_:
             r = self._spotipy.playlist_tracks(
-                playlist_id=playlist.identifier,
-                offset=current_offset
+                playlist_id=playlist.identifier, offset=current_offset
             )
 
             for item in r["items"]:
@@ -128,14 +123,16 @@ class SpotifyClient:
         for artist_obj in r["artists"]:
             artists.append(self.get_artist(artist_obj["id"]))
 
-        return self.enrich_track(Track(
-            artists=artists,
-            duration=r["duration_ms"],
-            explicit=r["explicit"],
-            identifier=r["id"],
-            name=r["name"],
-            popularity=r["popularity"],
-        ))
+        return self.enrich_track(
+            Track(
+                artists=artists,
+                duration=r["duration_ms"],
+                explicit=r["explicit"],
+                identifier=r["id"],
+                name=r["name"],
+                popularity=r["popularity"],
+            )
+        )
 
     def store_playlist(self, playlist: Playlist):
         if not playlist.identifier:
@@ -152,7 +149,5 @@ class SpotifyClient:
     def wipe_playlist(self, playlist: Playlist):
         tracks = [track.identifier for track in self.get_playlist_tracks(playlist)]
         self._spotipy.user_playlist_remove_all_occurrences_of_tracks(
-            self._user_id,
-            playlist.identifier,
-            tracks
+            self._user_id, playlist.identifier, tracks
         )
