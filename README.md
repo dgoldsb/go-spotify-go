@@ -12,3 +12,4 @@ This tool can be considered as a semi-random walker that is drawn to more popula
 - Filter on correct market availability
 - Making a PIP-installable command line tool would be neat
 - Have a Dockerfile that makes sense, as currently user input is required, maybe run a small webserver that you provide your token and preferred settings to
+- Think of a way to start at a seed and end at a target, would require a very different strategy

@@ -91,8 +91,8 @@ class DriftingWeight(WeightCalculator):
         )
 
         return (track.popularity * artist.popularity) * (
-            seed_similarity / previous_similarity
-        ) ** 2
+            seed_similarity / previous_similarity ** 2
+        )
 
 
 class ArtistChainFactory:
