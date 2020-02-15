@@ -16,7 +16,7 @@ class WeightCalculator:
     """
 
     def __init__(self, seed_track):
-        self.last_track = None
+        self.last_track = seed_track
         self.seed_track = seed_track
 
     def _calculate_one(self, track: Track, artist: Artist):
@@ -49,10 +49,7 @@ class SimilarWeight(WeightCalculator):
     """
 
     def _calculate_one(self, track: Track, artist: Artist):
-        if not self.last_track:
-            similarity = 1
-        else:
-            similarity = cartesian_distance(track, self.last_track)
+        similarity = cartesian_distance(track, self.last_track)
 
         LOG.info("Artist %s has popularity %s", artist.name, artist.popularity)
         LOG.info("Track %s has popularity %s", track.name, track.popularity)
