@@ -1,0 +1,23 @@
+---
+dist: bionic
+language: python
+python: 3.7
+install:
+  - pipenv install
+  - pipenv run python -m pip install black
+  - pipenv run python -m pip install isort
+  - pipenv run python -m pip install pylint
+  - export PYTHONPATH=./src
+script:
+  # Run pylint.
+  - pipenv run python -m pylint --rcfile=.pylintrc src
+  # Check if the project is Black formatted and has proper import sorting.
+  - pipenv run python -m black src
+  - pipenv run python -m isort --apply
+  - git diff --exit-code --name-status
+cache:
+  apt: true
+  bundler: true
+  directories:
+    # The PIP installation directory.
+    - ${HOME}/.local

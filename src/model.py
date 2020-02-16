@@ -23,13 +23,14 @@ class Artist:
 
 @dataclass
 class Track:
+    # pylint: disable=too-many-instance-attributes
     duration: int
     explicit: bool
     identifier: str
     name: str
     popularity: int
 
-    artists: typing.List[Artist] = field(default_factory=lambda: list())
+    artists: typing.List[Artist] = field(default_factory=list)
     key: int = None
     mode: int = None
     time_signature: int = None
@@ -88,7 +89,10 @@ class Playlist(list):
         super().__setitem__(key, value)
 
     def __repr__(self):
-        return f"<Playlist instance at {id(self)}, {self.duration} ms, {len(self.artists)} artists, {len(self.tracks)} tracks>"
+        return (
+            f"<Playlist instance at {id(self)}, {self.duration} ms,"
+            f"{len(self.artists)} artists, {len(self.tracks)} tracks>"
+        )
 
     def __str__(self):
         return repr(self)
@@ -111,13 +115,13 @@ class Playlist(list):
         return set(self)
 
 
-def cartesian_distance(a, b):
+def cartesian_distance(track_a, track_b):
     """
     Calculate the distance between two object that implement a ``vector`` attribute.
     """
     total = 0
 
-    for a_, b_ in zip(a.vector, b.vector):
-        total += (a_ - b_) ** 2
+    for attribute_a, attribute_b in zip(track_a.vector, track_b.vector):
+        total += (attribute_a - attribute_b) ** 2
 
     return total ** 0.5

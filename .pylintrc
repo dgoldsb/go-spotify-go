@@ -1,0 +1,23 @@
+[MESSAGES CONTROL]
+
+disable=
+    fixme,
+# Disabled because we want to:
+    missing-docstring,              # not ready for that yet
+    redefined-builtin,              # up to the developer to figure out
+    too-few-public-methods,         # allowed to enable nicer APIs (functors)
+# Disabled because we need to:
+    bad-continuation,               # Black handles continuation, and disagrees with PyLint
+    misplaced-comparison-constant   # PyTest seems to expect the "expected value" on the left side
+
+[BASIC]
+
+# Allow short attribute names (like "id")
+attr-rgx=[a-z_][a-z0-9_]{0,30}$
+variable-rgx=[a-z_][a-z0-9_]{0,30}$
+
+[DESIGN]
+
+max-args=10
+max-attributes=10
+max-line-length=88

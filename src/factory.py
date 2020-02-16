@@ -1,6 +1,6 @@
+import logging
 import random
 import typing
-import logging
 from operator import attrgetter
 
 from client import SpotifyClient
